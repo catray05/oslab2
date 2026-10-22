@@ -41,6 +41,34 @@ void parse(std::vector<Token> &tokens)
       right now command.execute only print the format , you will inject it in your logic.
 
     */
+   for(std::size_t i=0;i<tokens.size();i++){
+        if(tokens[i].type==TOKEN_COMMAND){
+            currentCommand._numberOfSimpleCommands++;
+            //mfrood simple command ht4awer 3leiha 2w 7aga kda lssa m3rf4 ezay
+        } 
+        if(tokens[i].type==TOKEN_PIPE){
+
+        }
+        if(tokens[i].type==TOKEN_REDIRECT){
+
+        }
+        if(tokens[i].type==TOKEN_APPEND){
+
+        }
+        if(tokens[i].type==TOKEN_BACKGROUND){
+
+        }
+        if(tokens[i].type==TOKEN_ERROR){
+
+        }
+        if(tokens[i].type==TOKEN_REDIRECT_AND_ERROR){
+
+        }
+        if(tokens[i].type==TOKEN_ARGUMENT){
+            currentSimpleCommand->_numberOfArguments++;
+            // currentSimpleCommand->insertArgument(tokens[i]);
+        }
+   }
 }
 
 SimpleCommand::SimpleCommand()

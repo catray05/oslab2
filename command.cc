@@ -42,31 +42,34 @@ void parse(std::vector<Token> &tokens)
 
     */
    for(std::size_t i=0;i<tokens.size();i++){
+        Token &prev = tokens.back();
         if(tokens[i].type==TOKEN_COMMAND){
-            currentCommand._numberOfSimpleCommands++;
-            //mfrood simple command ht4awer 3leiha 2w 7aga kda lssa m3rf4 ezay
+            
         } 
         if(tokens[i].type==TOKEN_PIPE){
-
+            // currentCommand.insertSimpleCommand(prev)
         }
         if(tokens[i].type==TOKEN_REDIRECT){
-
+            currentCommand._outFile=(char *)malloc(tokens[++i].value.size()+1);
+            strcpy(currentCommand._outFile,tokens[i].value.c_str());
         }
         if(tokens[i].type==TOKEN_APPEND){
 
         }
         if(tokens[i].type==TOKEN_BACKGROUND){
-
+            currentCommand._background=1;
         }
         if(tokens[i].type==TOKEN_ERROR){
-
+            
         }
         if(tokens[i].type==TOKEN_REDIRECT_AND_ERROR){
 
         }
         if(tokens[i].type==TOKEN_ARGUMENT){
-            currentSimpleCommand->_numberOfArguments++;
-            // currentSimpleCommand->insertArgument(tokens[i]);
+            currentSimpleCommand->insertArgument(tokens[i].value.data());
+        }
+        if(tokens[i].type==TOKEN_EOF){
+            currentCommand.execute();
         }
    }
 }

@@ -206,7 +206,17 @@ void Command::execute()
     /*
         Write your code here
     */
-
+    pid_t pid=fork();
+    if(!pid){
+        execvp(this->_simpleCommands[0]->_arguments[0], this->_simpleCommands[0]->_arguments);
+    }
+    else if(pid>0){
+        if(!this->_background)
+            waitpid(pid,NULL,0);
+    }
+    else{
+        //pid error
+    }
     clear();
     prompt();
 }

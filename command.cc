@@ -54,16 +54,27 @@ void parse(std::vector<Token> &tokens)
             strcpy(currentCommand._outFile,tokens[i].value.c_str());
         }
         if(tokens[i].type==TOKEN_APPEND){
-
+            currentCommand._outFile=(char *)malloc(tokens[++i].value.size()+1);
+            strcpy(currentCommand._outFile,tokens[i].value.c_str());
+            currentCommand._append=1;
+        }
+        if(tokens[i].type==TOKEN_INPUT){
+            currentCommand._inputFile=(char *)malloc(tokens[++i].value.size()+1);
+            strcpy(currentCommand._inputFile,tokens[i].value.c_str());
         }
         if(tokens[i].type==TOKEN_BACKGROUND){
             currentCommand._background=1;
         }
         if(tokens[i].type==TOKEN_ERROR){
-            
+            currentCommand._errFile=(char *)malloc(tokens[++i].value.size()+1);
+            strcpy(currentCommand._errFile,tokens[i].value.c_str());
         }
         if(tokens[i].type==TOKEN_REDIRECT_AND_ERROR){
-
+            currentCommand._errFile=(char *)malloc(tokens[++i].value.size()+1);
+            strcpy(currentCommand._errFile,tokens[i].value.c_str());
+            currentCommand._outFile=(char *)malloc(tokens[i].value.size()+1);
+            strcpy(currentCommand._outFile,tokens[i].value.c_str());
+            currentCommand._out_error=1;
         }
         if(tokens[i].type==TOKEN_ARGUMENT){
             currentSimpleCommand->insertArgument(tokens[i].value.data());

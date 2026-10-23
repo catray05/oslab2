@@ -34,7 +34,7 @@ void parse(std::vector<Token> &tokens)
     Command currentCommand;
     SimpleCommand *currentSimpleCommand = new SimpleCommand();
 
-    currentCommand.execute();
+    // currentCommand.execute();
     /*
       Implement this function 
       you must parse for all possible tokens scenario

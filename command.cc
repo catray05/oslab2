@@ -42,12 +42,15 @@ void parse(std::vector<Token> &tokens)
 
     */
    for(std::size_t i=0;i<tokens.size();i++){
-        Token &prev = tokens.back();
         if(tokens[i].type==TOKEN_COMMAND){
-            
+            char *argument=(char *)malloc(tokens[i].value.size()+1);
+            strcpy(argument,tokens[i].value.c_str());
+            currentSimpleCommand->insertArgument(argument);
         } 
         if(tokens[i].type==TOKEN_PIPE){
-            // currentCommand.insertSimpleCommand(prev)
+            currentCommand.insertSimpleCommand(currentSimpleCommand);
+            SimpleCommand *nextSimpleCommand = new SimpleCommand();
+            currentSimpleCommand=nextSimpleCommand;
         }
         if(tokens[i].type==TOKEN_REDIRECT){
             currentCommand._outFile=(char *)malloc(tokens[++i].value.size()+1);
@@ -77,9 +80,12 @@ void parse(std::vector<Token> &tokens)
             currentCommand._out_error=1;
         }
         if(tokens[i].type==TOKEN_ARGUMENT){
-            currentSimpleCommand->insertArgument(tokens[i].value.data());
+            char *argument=(char *)malloc(tokens[i].value.size()+1);
+            strcpy(argument,tokens[i].value.c_str());
+            currentSimpleCommand->insertArgument(argument);
         }
         if(tokens[i].type==TOKEN_EOF){
+            currentCommand.insertSimpleCommand(currentSimpleCommand);
             currentCommand.execute();
         }
    }

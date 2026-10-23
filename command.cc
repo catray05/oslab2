@@ -55,15 +55,18 @@ void parse(std::vector<Token> &tokens)
         if(tokens[i].type==TOKEN_REDIRECT){
             currentCommand._outFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._outFile,tokens[i].value.c_str());
+            continue;
         }
         if(tokens[i].type==TOKEN_APPEND){
             currentCommand._outFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._outFile,tokens[i].value.c_str());
             currentCommand._append=1;
+            continue;
         }
         if(tokens[i].type==TOKEN_INPUT){
             currentCommand._inputFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._inputFile,tokens[i].value.c_str());
+            continue;
         }
         if(tokens[i].type==TOKEN_BACKGROUND){
             currentCommand._background=1;
@@ -71,6 +74,7 @@ void parse(std::vector<Token> &tokens)
         if(tokens[i].type==TOKEN_ERROR){
             currentCommand._errFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._errFile,tokens[i].value.c_str());
+            continue;
         }
         if(tokens[i].type==TOKEN_REDIRECT_AND_ERROR){
             currentCommand._errFile=(char *)malloc(tokens[++i].value.size()+1);
@@ -78,6 +82,7 @@ void parse(std::vector<Token> &tokens)
             currentCommand._outFile=(char *)malloc(tokens[i].value.size()+1);
             strcpy(currentCommand._outFile,tokens[i].value.c_str());
             currentCommand._out_error=1;
+            continue;
         }
         if(tokens[i].type==TOKEN_ARGUMENT){
             char *argument=(char *)malloc(tokens[i].value.size()+1);
@@ -208,15 +213,38 @@ void Command::execute()
     */
     pid_t pid=fork();
     if(!pid){
-        execvp(this->_simpleCommands[0]->_arguments[0], this->_simpleCommands[0]->_arguments);
+        if(_outFile){
+            int file_fd;
+            if(_append){
+                file_fd=open(_outFile,O_WRONLY|O_CREAT|O_APPEND,0666);
+            }
+            else {
+                file_fd=open(_outFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
+            }
+            if(file_fd<0){
+                perror("Error opening file");
+                exit(1);
+            }
+            dup2(file_fd,STDOUT_FILENO);
+            close(file_fd);
+        }
+        if(_inputFile){
+            int file_fd=open(_inputFile,O_RDONLY);
+            if(file_fd<0){
+                perror("Error opening file");
+                exit(1);
+            }
+            dup2(file_fd,STDIN_FILENO);
+            close(file_fd);
+        }
+        execvp(_simpleCommands[0]->_arguments[0], _simpleCommands[0]->_arguments);
     }
     else if(pid>0){
-        if(!this->_background)
+        if(!_background)
             waitpid(pid,NULL,0);
     }
-    else{
-        //pid error
-    }
+    else
+        perror("fork");
     clear();
     prompt();
 }

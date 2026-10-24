@@ -392,7 +392,31 @@ void Command::execute()
                 close(file_fd);
             }
             signal(SIGINT,SIG_DFL);
-            execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
+            std::vector<char *> newargs;
+            for(int j=0;_simpleCommands[i]->_arguments[j]!=NULL;j++){
+                if(strchr(_simpleCommands[i]->_arguments[j],'*')||strchr(_simpleCommands[i]->_arguments[j],'?')){
+                    glob_t match;
+                    int res=glob(_simpleCommands[i]->_arguments[j],0,NULL,&match);
+                    if(res==0){
+                        for(size_t k=0; k<match.gl_pathc;k++){
+                            newargs.push_back(strdup(match.gl_pathv[k]));
+                        }
+                    }
+                    else{
+                        newargs.push_back(strdup(_simpleCommands[i]->_arguments[j]));
+                    }
+                    globfree(&match);
+                }
+                else{
+                    newargs.push_back(strdup(_simpleCommands[i]->_arguments[j]));
+                }
+            }
+            newargs.push_back(NULL);
+            char **args=new char*[newargs.size()];
+            for (size_t k=0; k<newargs.size();k++) {
+                args[k]=newargs[k];
+            }
+            execvp(args[0], args);
             perror("exec error");
             _exit(2);
         }

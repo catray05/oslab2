@@ -82,6 +82,7 @@ void parse(std::vector<Token> &tokens)
             currentCommand._outFile=(char *)malloc(tokens[i].value.size()+1);
             strcpy(currentCommand._outFile,tokens[i].value.c_str());
             currentCommand._out_error=1;
+            currentCommand._append=1;
             continue;
         }
         if(tokens[i].type==TOKEN_ARGUMENT){
@@ -129,8 +130,6 @@ Command::Command()
     _inputFile = 0;
     _errFile = 0;
     _background = 0;
-    _append=0;
-    _out_error=0;
 }
 
 void Command::insertSimpleCommand(SimpleCommand *simpleCommand)
@@ -208,16 +207,13 @@ void Command::print()
 }
 void terminatedChild(int signal){
     int status;
-    pid_t pid=waitpid(-1,&status,WNOHANG);
-    if(pid>0){
+    pid_t pid;
+    while((pid=waitpid(-1,&status,WNOHANG))>0){
         FILE *logfile = fopen("logfile.log", "a");
         time_t now=time(NULL);
         if(logfile)
         {fprintf(logfile,"Child %d terminated at %s",pid,ctime(&now));
         fclose(logfile);}
-        else{
-            printf("Error creating file");
-        }
     }
 }
 void Command::execute()
@@ -244,11 +240,11 @@ void Command::execute()
             perror("cd");
         }
     }
+    signal(SIGCHLD, terminatedChild);  
     clear();
     // prompt();
     return;
 }
-    signal(SIGCHLD, terminatedChild);
     int prev=-1;
     int lastpid=-1;
     for(int i=0;i<_numberOfSimpleCommands;i++){
@@ -260,7 +256,6 @@ void Command::execute()
             }
         }
         pid_t pid=fork();
-        lastpid=pid;
         if(pid==-1){
             perror("fork");
             exit(2);
@@ -280,7 +275,7 @@ void Command::execute()
                 close(fdpipe[0]);
                 close(fdpipe[1]);
             }
-            if(_outFile && i==_numberOfSimpleCommands-1){
+            if(_outFile && !_out_error && i==_numberOfSimpleCommands-1){
                 int file_fd;
                 if(_append){
                     file_fd=open(_outFile,O_WRONLY|O_CREAT|O_APPEND,0666);
@@ -290,7 +285,7 @@ void Command::execute()
                 }
                 if(file_fd<0){
                     perror("Error opening file");
-                    exit(1);
+                    _exit(1);
                 }
                 dup2(file_fd,STDOUT_FILENO);
                 close(file_fd);
@@ -299,21 +294,30 @@ void Command::execute()
                 int file_fd=open(_inputFile,O_RDONLY);
                 if(file_fd<0){
                     perror("Error opening file");
-                    exit(1);
+                    _exit(1);
                 }
                 dup2(file_fd,STDIN_FILENO);
                 close(file_fd);
             }
-            if(_errFile){
-                int file_fd=open(_errFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
+            if(_errFile && i==_numberOfSimpleCommands-1){
+                int file_fd;
+                if(_append){
+                    file_fd=open(_errFile,O_WRONLY|O_CREAT|O_APPEND,0666);
+                }
+                else {
+                    file_fd=open(_errFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
+                }
                 if(file_fd<0){
                     perror("Error opening file");
-                    exit(1);
+                    _exit(1);
+                }
+                if(_out_error){
+                    dup2(file_fd,STDOUT_FILENO);
                 }
                 dup2(file_fd,STDERR_FILENO);
                 close(file_fd);
             }
-            // signal(SIGINT,SIG_DFL);
+            signal(SIGINT,SIG_DFL);
             execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
             perror("exec error");
             _exit(2);
@@ -326,8 +330,9 @@ void Command::execute()
             prev=fdpipe[0];
         }
     }
-    if(!_background)
+    if(!_background){
         waitpid(lastpid,0,0);
+    }  
     clear();
     // prompt();
     return;

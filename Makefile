@@ -6,11 +6,11 @@ CC= g++ -g
 
 all: myshell
 
-myshell: command tokenizer
-	$(CC) -o myshell command tokenizer
-command: command.cc command.h
-	$(CC) -o command command.cc command.h
-tokenizer: tokenizer.cc tokenizer.h
-	$(CC) -o tokenizer tokenizer.cc tokenizer.h
+myshell: command.o tokenizer.o
+	$(CC) -o myshell command.o tokenizer.o
+command.o: command.cc command.h tokenizer.h
+	$(CC) -c command.cc
+tokenizer.o: tokenizer.cc tokenizer.h
+	$(CC) -c tokenizer.cc
 clean:
-	rm -f tokenizer myshell command *.o
+	rm -f *.o myshell

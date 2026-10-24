@@ -249,57 +249,85 @@ void Command::execute()
     return;
 }
     signal(SIGCHLD, terminatedChild);
-    pid_t pid=fork();
-    if(pid==-1){
-        perror("fork");
-        exit(2);
-    }
-    if(!pid){
-        if(_outFile){
-            int file_fd;
-            if(_append){
-                file_fd=open(_outFile,O_WRONLY|O_CREAT|O_APPEND,0666);
-            }
-            else {
-                file_fd=open(_outFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
-            }
-            if(file_fd<0){
-                perror("Error opening file");
-                exit(1);
-            }
-            dup2(file_fd,STDOUT_FILENO);
-            close(file_fd);
-        }
-        if(_inputFile){
-            int file_fd=open(_inputFile,O_RDONLY);
-            if(file_fd<0){
-                perror("Error opening file");
-                exit(1);
-            }
-            dup2(file_fd,STDIN_FILENO);
-            close(file_fd);
-        }
-        if(_errFile){
-            int file_fd=open(_errFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
-            if(file_fd<0){
-                perror("Error opening file");
-                exit(1);
-            }
-            dup2(file_fd,STDERR_FILENO);
-            close(file_fd);
-        }
+    int prev=-1;
+    int lastpid=-1;
+    for(int i=0;i<_numberOfSimpleCommands;i++){
         int fdpipe[2];
-        if(pipe(fdpipe)==-1){
-            perror("pipe");
+        if(i<_numberOfSimpleCommands-1){
+            if(pipe(fdpipe)==-1){
+                perror("pipe");
+                exit(2);
+            }
+        }
+        pid_t pid=fork();
+        lastpid=pid;
+        if(pid==-1){
+            perror("fork");
             exit(2);
         }
-        dup2(_in)
-        execvp(_simpleCommands[0]->_arguments[0], _simpleCommands[0]->_arguments);
-        perror("exec error");
-        _exit(2);
+        lastpid=pid;
+        if(!pid){
+            if(i<_numberOfSimpleCommands-1){
+                dup2(fdpipe[1],1);
+            }
+            if(i>0){
+                dup2(prev,0);
+            }
+            if(prev!=-1){
+                close(prev);
+            }
+            if(i<_numberOfSimpleCommands-1){
+                close(fdpipe[0]);
+                close(fdpipe[1]);
+            }
+            if(_outFile && i==_numberOfSimpleCommands-1){
+                int file_fd;
+                if(_append){
+                    file_fd=open(_outFile,O_WRONLY|O_CREAT|O_APPEND,0666);
+                }
+                else {
+                    file_fd=open(_outFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
+                }
+                if(file_fd<0){
+                    perror("Error opening file");
+                    exit(1);
+                }
+                dup2(file_fd,STDOUT_FILENO);
+                close(file_fd);
+            }
+            if(_inputFile && i==0){
+                int file_fd=open(_inputFile,O_RDONLY);
+                if(file_fd<0){
+                    perror("Error opening file");
+                    exit(1);
+                }
+                dup2(file_fd,STDIN_FILENO);
+                close(file_fd);
+            }
+            if(_errFile){
+                int file_fd=open(_errFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
+                if(file_fd<0){
+                    perror("Error opening file");
+                    exit(1);
+                }
+                dup2(file_fd,STDERR_FILENO);
+                close(file_fd);
+            }
+            // signal(SIGINT,SIG_DFL);
+            execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
+            perror("exec error");
+            _exit(2);
+        }
+        if(prev!=-1){
+            close(prev);
+        }
+        if(i<_numberOfSimpleCommands-1){
+            close(fdpipe[1]);
+            prev=fdpipe[0];
+        }
     }
     if(!_background)
-        waitpid(pid,0,0);
+        waitpid(lastpid,0,0);
     clear();
     // prompt();
     return;

@@ -211,6 +211,26 @@ void Command::execute()
     /*
         Write your code here
     */
+   if(_numberOfSimpleCommands==0||_simpleCommands[0]->_numberOfArguments==0)
+        return;
+    if(!strcmp(_simpleCommands[0]->_arguments[0],"exit")){
+        printf("byebye!!!! :D\n");
+        clear();
+        exit(0);
+    }
+    if(!strcmp(_simpleCommands[0]->_arguments[0], "cd")){
+    if(_simpleCommands[0]->_numberOfArguments == 1){
+        chdir(getenv("HOME"));
+    } 
+    else{
+        if(chdir(_simpleCommands[0]->_arguments[1]) != 0){
+            perror("cd");
+        }
+    }
+    clear();
+    prompt();
+    return;
+}
     pid_t pid=fork();
     if(!pid){
         if(_outFile){
@@ -237,6 +257,7 @@ void Command::execute()
             dup2(file_fd,STDIN_FILENO);
             close(file_fd);
         }
+        signal(SIGINT,SIG_DFL);
         execvp(_simpleCommands[0]->_arguments[0], _simpleCommands[0]->_arguments);
     }
     else if(pid>0){
@@ -251,6 +272,7 @@ void Command::execute()
 
 void Command::prompt()
 {
+    signal(SIGINT, SIG_IGN);
     printf("myshell>");
     fflush(stdout);
     std::string input;

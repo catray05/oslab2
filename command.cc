@@ -41,6 +41,7 @@ void parse(std::vector<Token> &tokens)
       right now command.execute only print the format , you will inject it in your logic.
 
     */
+   bool error=false;
    for(std::size_t i=0;i<tokens.size();i++){
         if(tokens[i].type==TOKEN_COMMAND){
             char *argument=(char *)malloc(tokens[i].value.size()+1);
@@ -48,22 +49,63 @@ void parse(std::vector<Token> &tokens)
             currentSimpleCommand->insertArgument(argument);
         } 
         if(tokens[i].type==TOKEN_PIPE){
+            if(currentSimpleCommand->_numberOfArguments==0){
+                printf("Error! Missing command near pipe\n");
+                error=true;
+                break;
+            }
             currentCommand.insertSimpleCommand(currentSimpleCommand);
             SimpleCommand *nextSimpleCommand = new SimpleCommand();
             currentSimpleCommand=nextSimpleCommand;
         }
         if(tokens[i].type==TOKEN_REDIRECT){
+            if(i+1 >= tokens.size() ||
+            tokens[i+1].type == TOKEN_EOF ||
+            tokens[i+1].type == TOKEN_PIPE ||
+            tokens[i+1].type == TOKEN_REDIRECT ||
+            tokens[i+1].type == TOKEN_APPEND ||
+            tokens[i+1].type == TOKEN_INPUT ||
+            tokens[i+1].type == TOKEN_ERROR ||
+            tokens[i+1].type == TOKEN_REDIRECT_AND_ERROR){
+                printf("Syntax error: missing filename after >\n");
+                error = true;
+                break;
+            }
             currentCommand._outFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._outFile,tokens[i].value.c_str());
             continue;
         }
         if(tokens[i].type==TOKEN_APPEND){
+            if(i+1 >= tokens.size() ||
+            tokens[i+1].type == TOKEN_EOF ||
+            tokens[i+1].type == TOKEN_PIPE ||
+            tokens[i+1].type == TOKEN_REDIRECT ||
+            tokens[i+1].type == TOKEN_APPEND ||
+            tokens[i+1].type == TOKEN_INPUT ||
+            tokens[i+1].type == TOKEN_ERROR ||
+            tokens[i+1].type == TOKEN_REDIRECT_AND_ERROR){
+                printf("Syntax error: missing filename after >>\n");
+                error = true;
+                break;
+            }
             currentCommand._outFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._outFile,tokens[i].value.c_str());
             currentCommand._append=1;
             continue;
         }
         if(tokens[i].type==TOKEN_INPUT){
+            if(i+1 >= tokens.size() ||
+            tokens[i+1].type == TOKEN_EOF ||
+            tokens[i+1].type == TOKEN_PIPE ||
+            tokens[i+1].type == TOKEN_REDIRECT ||
+            tokens[i+1].type == TOKEN_APPEND ||
+            tokens[i+1].type == TOKEN_INPUT ||
+            tokens[i+1].type == TOKEN_ERROR ||
+            tokens[i+1].type == TOKEN_REDIRECT_AND_ERROR){
+                printf("Syntax error: missing filename after <\n");
+                error = true;
+                break;
+            }
             currentCommand._inputFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._inputFile,tokens[i].value.c_str());
             continue;
@@ -72,11 +114,35 @@ void parse(std::vector<Token> &tokens)
             currentCommand._background=1;
         }
         if(tokens[i].type==TOKEN_ERROR){
+            if(i+1 >= tokens.size() ||
+            tokens[i+1].type == TOKEN_EOF ||
+            tokens[i+1].type == TOKEN_PIPE ||
+            tokens[i+1].type == TOKEN_REDIRECT ||
+            tokens[i+1].type == TOKEN_APPEND ||
+            tokens[i+1].type == TOKEN_INPUT ||
+            tokens[i+1].type == TOKEN_ERROR ||
+            tokens[i+1].type == TOKEN_REDIRECT_AND_ERROR){
+                printf("Syntax error: missing filename after 2>\n");
+                error = true;
+                break;
+            }
             currentCommand._errFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._errFile,tokens[i].value.c_str());
             continue;
         }
         if(tokens[i].type==TOKEN_REDIRECT_AND_ERROR){
+            if(i+1 >= tokens.size() ||
+            tokens[i+1].type == TOKEN_EOF ||
+            tokens[i+1].type == TOKEN_PIPE ||
+            tokens[i+1].type == TOKEN_REDIRECT ||
+            tokens[i+1].type == TOKEN_APPEND ||
+            tokens[i+1].type == TOKEN_INPUT ||
+            tokens[i+1].type == TOKEN_ERROR ||
+            tokens[i+1].type == TOKEN_REDIRECT_AND_ERROR){
+                printf("Syntax error: missing filename after >>&\n");
+                error = true;
+                break;
+            }
             currentCommand._errFile=(char *)malloc(tokens[++i].value.size()+1);
             strcpy(currentCommand._errFile,tokens[i].value.c_str());
             currentCommand._outFile=(char *)malloc(tokens[i].value.size()+1);
@@ -91,6 +157,12 @@ void parse(std::vector<Token> &tokens)
             currentSimpleCommand->insertArgument(argument);
         }
         if(tokens[i].type==TOKEN_EOF){
+            if(currentSimpleCommand->_numberOfArguments==0){
+                printf("Error! Missing command near pipe\n");
+                error=true;
+            }
+            if(error)
+                break;
             currentCommand.insertSimpleCommand(currentSimpleCommand);
             currentCommand.execute();
         }
@@ -130,6 +202,8 @@ Command::Command()
     _inputFile = 0;
     _errFile = 0;
     _background = 0;
+    _append=0;
+    _out_error=0;
 }
 
 void Command::insertSimpleCommand(SimpleCommand *simpleCommand)
@@ -239,12 +313,12 @@ void Command::execute()
         if(chdir(_simpleCommands[0]->_arguments[1]) != 0){
             perror("cd");
         }
-    }
-    signal(SIGCHLD, terminatedChild);  
+    } 
     clear();
     // prompt();
     return;
 }
+    signal(SIGCHLD, terminatedChild); 
     int prev=-1;
     int lastpid=-1;
     for(int i=0;i<_numberOfSimpleCommands;i++){

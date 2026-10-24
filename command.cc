@@ -204,7 +204,20 @@ void Command::print()
            ,_background ? "YES" : "NO");
     printf("\n\n");
 }
-
+void terminatedChild(int signal){
+    int status;
+    pid_t pid=waitpid(-1,&status,WNOHANG);
+    if(pid>0){
+        FILE *logfile = fopen("logfile.log", "a");
+        time_t now=time(NULL);
+        if(logfile)
+        {fprintf(logfile,"Child %d terminated at %s",pid,ctime(&now));
+        fclose(logfile);}
+        else{
+            printf("Error creating file");
+        }
+    }
+}
 void Command::execute()
 {
     print();
@@ -231,6 +244,7 @@ void Command::execute()
     prompt();
     return;
 }
+    signal(SIGCHLD, terminatedChild);
     pid_t pid=fork();
     if(!pid){
         if(_outFile){

@@ -129,6 +129,8 @@ Command::Command()
     _inputFile = 0;
     _errFile = 0;
     _background = 0;
+    _append=0;
+    _out_error=0;
 }
 
 void Command::insertSimpleCommand(SimpleCommand *simpleCommand)
@@ -220,12 +222,14 @@ void terminatedChild(int signal){
 }
 void Command::execute()
 {
+    if(_numberOfSimpleCommands==0||_simpleCommands[0]->_numberOfArguments==0){
+        clear();        
+        return;
+    }
     print();
     /*
         Write your code here
     */
-   if(_numberOfSimpleCommands==0||_simpleCommands[0]->_numberOfArguments==0)
-        return;
     if(!strcmp(_simpleCommands[0]->_arguments[0],"exit")){
         printf("byebye!!!! :D\n");
         clear();
@@ -241,11 +245,15 @@ void Command::execute()
         }
     }
     clear();
-    prompt();
+    // prompt();
     return;
 }
     signal(SIGCHLD, terminatedChild);
     pid_t pid=fork();
+    if(pid==-1){
+        perror("fork");
+        exit(2);
+    }
     if(!pid){
         if(_outFile){
             int file_fd;
@@ -271,27 +279,41 @@ void Command::execute()
             dup2(file_fd,STDIN_FILENO);
             close(file_fd);
         }
-        signal(SIGINT,SIG_DFL);
+        if(_errFile){
+            int file_fd=open(_errFile,O_WRONLY|O_CREAT|O_TRUNC,0666);
+            if(file_fd<0){
+                perror("Error opening file");
+                exit(1);
+            }
+            dup2(file_fd,STDERR_FILENO);
+            close(file_fd);
+        }
+        int fdpipe[2];
+        if(pipe(fdpipe)==-1){
+            perror("pipe");
+            exit(2);
+        }
+        dup2(_in)
         execvp(_simpleCommands[0]->_arguments[0], _simpleCommands[0]->_arguments);
+        perror("exec error");
+        _exit(2);
     }
-    else if(pid>0){
-        if(!_background)
-            waitpid(pid,NULL,0);
-    }
-    else
-        perror("fork");
+    if(!_background)
+        waitpid(pid,0,0);
     clear();
-    prompt();
+    // prompt();
+    return;
 }
 
 void Command::prompt()
 {
     signal(SIGINT, SIG_IGN);
-    printf("myshell>");
+    // printf("myshell>");
     fflush(stdout);
     std::string input;
     while (true)
     {
+        printf("myshell>");
         std::getline(std::cin, input); 
         std::vector<Token> tokens = tokenize(input);
         parse(tokens);
